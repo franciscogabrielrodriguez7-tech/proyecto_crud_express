@@ -1,21 +1,55 @@
 const express = require('express');
 require('dotenv').config();
+const sistemaArchivo = require("fs")
+// fs : fileSystem 
+const ruta = require("path")
+// permite usar rutas
+const rutaMiArchivo = ruta.join(__dirname, "datos.json")
 
 const app = express();
 const PORT = process.env.PORT || 3003;
 app.use(express.json());
+// middleware para parsear el body de las peticiones
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
     res.json({ mensaje: '¡API Rest Full con express!' });
 });
 
 app.get('/api/aprendices', (req, res) => {
-    res.status(200).json({ mensaje: 'Lista de aprendices' });
+    // res.status(200).json({ mensaje: 'Lista de aprendices' });
+    sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
+        if (error) res.status(500).json({ mensaje: 'Error al leer el archivo' });
+        const listaAprendices= JSON.parse(datos)
+        res.status(200).json({listado: listaAprendices});
+        }
+    );
 });
 
 app.post('/api/aprendices', (req, res) => {
-     const datosAprendiz = req.body
-    res.status(201).json({ mensaje: 'Aprendiz creado', datos: datosAprendiz});
+    // const datosAprendiz = req.body
+    // res.status(201).json({ mensaje: 'Aprendiz creado', datos: datosAprendiz});
+    
+    // se piden los datos del aprendiz
+    
+    // se lee el archivo y se agrega el aprendiz
+        
+        sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
+        if (error) res.status(500).json({ mensaje: 'Error al leer el archivo' });
+            const listaAprendices= JSON.parse(datos)
+        
+        const datosAprendiz = req.body
+        // if (!datosAprendiz.nombre || !datosAprendiz.edad || !datosAprendiz.correo || !datosAprendiz.imagen || !datosAprendiz.clave) {
+        //     res.status(400).json({ mensaje: 'Faltan datos del aprendiz' });
+        //     }
+        listaAprendices.push(datosAprendiz)
+        
+        // se escribe el aprendiz en el archivo
+        sistemaArchivo.writeFile(rutaMiArchivo, JSON.stringify(listaAprendices,null,2), (error) => {
+            if (error) res.status(500).json({ mensaje: 'Error al crear el aprendiz en el archivo' });
+            res.status(201).json({mensaje: 'Aprendiz creado', datos: datosAprendiz});
+        });
+    });
 });
 
 app.patch('/api/aprendices/:id_aprendiz', (req, res) => {
