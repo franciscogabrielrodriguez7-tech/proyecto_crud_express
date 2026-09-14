@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "name": "Francisco",
+    "edad": "17",
+    "email": "gabrielrodriguez@example.com",
+    "imagen": "sin imagen"
+  }
+]

@@ -6,6 +6,10 @@ const ruta = require("path")
 // permite usar rutas
 const rutaMiArchivo = ruta.join(__dirname, "datos.json")
 
+// importar validaciones
+const usuarioSchema = require("./validaciones/usuarioSchema")
+const validarCampos = require("./validaciones/validarCampos")
+
 const app = express();
 const PORT = process.env.PORT || 3003;
 app.use(express.json());
@@ -42,7 +46,7 @@ app.get('/api/aprendices', (req, res) => {
     );
 });
 
-app.post('/api/aprendices', subir.single("imagen"), (req, res) => {
+app.post('/api/aprendices', subir.single("imagen"), validarCampos(usuarioSchema), (req, res) => {
     // const datosAprendiz = req.body
     // res.status(201).json({ mensaje: 'Aprendiz creado', datos: datosAprendiz});
 
