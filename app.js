@@ -12,9 +12,16 @@ const validarCampos = require("./validaciones/validarCampos")
 
 const app = express();
 const PORT = process.env.PORT || 3003;
-app.use(express.json());
+const registroMiddleware = require("./middleware/registroMiddleware")
+const manejadorErroresMiddleware = require("./middleware/manejadorErroresMiddleware")
 // middleware para parsear el body de las peticiones
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// usar nuestros middlewares
+app.use(registroMiddleware);
+app.use(manejadorErroresMiddleware);
+
 // importar multer para manejar archivos
 const multer = require("multer")
 // almacenamiento 
@@ -47,35 +54,89 @@ app.get('/api/aprendices', (req, res) => {
 });
 
 app.post('/api/aprendices', subir.single("imagen"), validarCampos(usuarioSchema), (req, res) => {
-    // const datosAprendiz = req.body
-    // res.status(201).json({ mensaje: 'Aprendiz creado', datos: datosAprendiz});
-
-    // se piden los datos del aprendiz
     const datosAprendiz = req.body
+
+    // Si envían un id lo respeta; de lo contrario, se autogenera con la fecha actual
+    datosAprendiz.id = datosAprendiz.id || Date.now().toString();
+
     datosAprendiz.imagen = req.file ? `/misImagenes/${req.file.filename}` : "sin imagen"
 
-    // se lee el archivo y se agrega el aprendiz
+    // se lee el archivo y se verifica la unicidad del ID
     sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
-        if (error) res.status(500).json({ mensaje: 'Error al leer el archivo' });
-        const listaAprendices = JSON.parse(datos)
+        if (error) return res.status(500).json({ mensaje: 'Error al leer el archivo' });
+        const listaAprendices = JSON.parse(datos);
 
+        // AQUÍ ASEGURAS QUE EL ID SEA ÚNICO:
+        const idExistente = listaAprendices.some(aprendiz => aprendiz.id === datosAprendiz.id);
+        if (idExistente) {
+            return res.status(400).json({ mensaje: `El ID '${datosAprendiz.id}' ya está registrado. Debe ser único.` });
+        }
 
-        listaAprendices.push(datosAprendiz)
+        listaAprendices.push(datosAprendiz);
 
         // se escribe el aprendiz en el archivo
         sistemaArchivo.writeFile(rutaMiArchivo, JSON.stringify(listaAprendices, null, 2), (error) => {
-            if (error) res.status(500).json({ mensaje: 'Error al crear el aprendiz en el archivo' });
+            if (error) return res.status(500).json({ mensaje: 'Error al crear el aprendiz en el archivo' });
             res.status(201).json({ mensaje: 'Aprendiz creado', datos: datosAprendiz });
         });
     });
 });
 
-app.patch('/api/aprendices/:id_aprendiz', (req, res) => {
-    res.status(200).json({ mensaje: 'Aprendiz actualizado' });
+app.patch('/api/aprendices/:id_aprendiz', subir.single("imagen"), (req, res) => {
+    const idAprendiz = req.params.id_aprendiz;
+    const datosActualizados = req.body;
+
+    sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
+        if (error) return res.status(500).json({ mensaje: 'Error al leer el archivo' });
+        const listaAprendices = JSON.parse(datos);
+
+        // Buscar el índice del aprendiz por su id
+        const index = listaAprendices.findIndex(aprendiz => aprendiz.id === idAprendiz);
+        if (index === -1) {
+            return res.status(404).json({ mensaje: 'Aprendiz no encontrado' });
+        }
+
+        // Si se subió una nueva imagen, actualizar la ruta; de lo contrario, mantener la anterior
+        if (req.file) {
+            datosActualizados.imagen = `/misImagenes/${req.file.filename}`;
+        }
+
+        // Fusionar los datos existentes con los nuevos campos enviados
+        listaAprendices[index] = {
+            ...listaAprendices[index],
+            ...datosActualizados
+        };
+
+        // Guardar la lista actualizada en el archivo JSON
+        sistemaArchivo.writeFile(rutaMiArchivo, JSON.stringify(listaAprendices, null, 2), (error) => {
+            if (error) return res.status(500).json({ mensaje: 'Error al actualizar el aprendiz en el archivo' });
+            res.status(200).json({ mensaje: 'Aprendiz actualizado', datos: listaAprendices[index] });
+        });
+    });
 });
 
 app.delete('/api/aprendices/:id_aprendiz', (req, res) => {
-    res.status(200).json({ mensaje: 'Eliminar aprendiz' });
+    const idAprendiz = req.params.id_aprendiz;
+
+    sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
+        if (error) return res.status(500).json({ mensaje: 'Error al leer el archivo' });
+        const listaAprendices = JSON.parse(datos);
+
+        // Buscar el índice del aprendiz por su id
+        const index = listaAprendices.findIndex(aprendiz => aprendiz.id === idAprendiz);
+        if (index === -1) {
+            return res.status(404).json({ mensaje: 'Aprendiz no encontrado' });
+        }
+
+        // Eliminar el aprendiz de la lista
+        listaAprendices.splice(index, 1);
+
+        // Guardar la lista actualizada en el archivo JSON
+        sistemaArchivo.writeFile(rutaMiArchivo, JSON.stringify(listaAprendices, null, 2), (error) => {
+            if (error) return res.status(500).json({ mensaje: 'Error al eliminar el aprendiz en el archivo' });
+            res.status(200).json({ mensaje: 'Aprendiz eliminado', datos: listaAprendices[index] });
+        });
+    });
 });
 
 app.post('/api/aprendices/login', (req, res) => {
