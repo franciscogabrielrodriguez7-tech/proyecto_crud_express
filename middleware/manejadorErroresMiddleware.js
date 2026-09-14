@@ -7,7 +7,7 @@ const manejadorErroresMiddleware = (error, req, res, next) => {
     }
     res.json({ERROR: "", codigoError, mensajeError,
 // configurar .env, para mostrar errores solo en modo development
-    ...codigoError(process.env.NODE_ENV === 'development', { stack: error.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     })
     next()
 }
