@@ -153,6 +153,11 @@ app.post('/api/aprendices/login', (req, res) => {
     }
 });
 
+// provocando error 
+app.get('/api/error', (req, res, next) => {
+    next(new Error('Error provocado'));
+})
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
 });
