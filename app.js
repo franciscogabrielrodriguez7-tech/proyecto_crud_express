@@ -7,13 +7,15 @@ const ruta = require("path")
 const rutaMiArchivo = ruta.join(__dirname, "datos.json")
 
 // importar validaciones
-const usuarioSchema = require("./validaciones/usuarioSchema")
-const validarCampos = require("./validaciones/validarCampos")
+const usuarioSchema = require("./src/validaciones/usuarioSchema")
+const validarCampos = require("./src/validaciones/validarCampos")
+const autenticacionMiddleware = require("./src/middleware/auntenticacionMiddleware")
 
 const app = express();
 const PORT = process.env.PORT || 3003;
-const registroMiddleware = require("./middleware/registroMiddleware")
-const manejadorErroresMiddleware = require("./middleware/manejadorErroresMiddleware")
+const jwtoken = require("jsonwebtoken")
+const registroMiddleware = require("./src/middleware/registroMiddleware")
+const manejadorErroresMiddleware = require("./src/middleware/manejadorErroresMiddleware")
 // middleware para parsear el body de las peticiones
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,6 +43,41 @@ const subir = multer({ storage: almacen })
 app.get('/', (req, res) => {
     res.json({ mensaje: '¡API Rest Full con express!' });
 });
+
+app.post('/api/aprendices/login', (req, res) => {
+    // // capturar datos del usuario
+    // const {email, clave} = req.body;
+    // const dbUsuario = { "email": "gabrielrodriguez@example.com", "clave": "1234"}
+
+    // if (email !== dbUsuario.email || clave !== dbUsuario.clave) {
+    // res.json({ mensaje: 'Usuario y/o contraseña no coinciden' });
+    // }
+    // // verificación y generación de token
+    // const token = jwtoken.sign(
+    //     {"email":req.email},
+    //     process.env.JWT_SECRETO,
+    //     { expiresIn: '1h'}
+    // ) 
+    
+    // res.status(200).json({ mensaje: 'Usuario verificado', token: token });
+
+    const {email, clave} = req.body
+   
+    sistemaArchivo.readFile(rutaMiArchivo, "utf-8", (error, datos) => {
+    if (error) res.status(500).json({ mensaje: 'Error al leer el archivo' });
+        const listaAprendices = JSON.parse(datos)
+        // el siguiente const es para verificar si el usuario y la clave existen en el archivo datos.json 
+        const validcionCuenta = listaAprendices.findIndex(aprendiz => aprendiz.email === email && aprendiz.clave === clave);
+        if (validcionCuenta === -1) {
+            return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos' });
+        }
+        else if (validcionCuenta !== -1) {
+            // // generar token
+            const token = jwtoken.sign({ email: email }, process.env.JWT_SECRETO, { expiresIn: '1h' });
+            res.status(200).json({ mensaje: 'Usuario verificado', token: token });
+        }
+    })
+}) 
 
 app.get('/api/aprendices', (req, res) => {
     // res.status(200).json({ mensaje: 'Lista de aprendices' });
@@ -155,6 +192,12 @@ app.post('/api/aprendices/login', (req, res) => {
 // provocando error 
 app.get('/api/error', (req, res, next) => {
     next(new Error('Error provocado'));
+})
+
+// ruta protegida para acceder con token
+
+app.get('/api/rutaprotegida', autenticacionMiddleware, (req, res)=>{
+    res.json({ mensaje: 'Ruta protegida, acceso con token' });
 })
 
 app.use(manejadorErroresMiddleware);
