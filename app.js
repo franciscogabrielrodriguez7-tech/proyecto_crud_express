@@ -159,6 +159,7 @@ app.get('/api/error', (req, res, next) => {
 
 app.use(manejadorErroresMiddleware);
 
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
 });
