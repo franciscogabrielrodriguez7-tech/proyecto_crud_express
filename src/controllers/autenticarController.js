@@ -20,7 +20,7 @@ const iniciarSesion = async (req, res) => {
 const registrarse = async (req, res) => {
     try {
         const datos = req.body
-       res.json({ datosRegistro: datos }) 
+        res.json({ datosRegistro: datos }) 
     }
     catch (error) {
         res.json({Error: error})
